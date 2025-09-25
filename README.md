@@ -1,4 +1,4 @@
-# Digital Education Certificate Management System
+# Digital Certificate Management System
 
 A comprehensive blockchain-based system for managing digital education certificates on Ethereum. This system allows organizations to issue, manage, and verify educational certificates with proper access control and decentralized storage.
 
