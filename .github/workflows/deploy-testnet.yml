@@ -78,14 +78,43 @@ jobs:
         run: |
           echo "🚀 Starting deployment to Sepolia testnet..."
           
-          # Deploy contracts using forge script
-          forge script script/Deploy.s.sol:DeployScript \
-            --rpc-url $RPC_URL \
-            --private-key $PRIVATE_KEY \
-            --broadcast \
-            --verify \
-            --etherscan-api-key ${{ secrets.ETHERSCAN_API_KEY }} \
-            -vvvv
+          # Function to deploy with retry logic
+          deploy_with_retry() {
+            local max_attempts=3
+            local attempt=1
+            local delay=30
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Deployment attempt $attempt of $max_attempts..."
+              
+              # Deploy contracts using forge script
+              if forge script script/Deploy.s.sol:DeployScript \
+                --rpc-url $RPC_URL \
+                --private-key $PRIVATE_KEY \
+                --broadcast \
+                --verify \
+                --etherscan-api-key ${{ secrets.ETHERSCAN_API_KEY }} \
+                --slow \
+                -vvvv; then
+                echo "Deployment successful!"
+                return 0
+              else
+                echo "Deployment attempt $attempt failed"
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Waiting $delay seconds before retry..."
+                  sleep $delay
+                  delay=$((delay + 30))  # Increase delay for next attempt
+                fi
+                attempt=$((attempt + 1))
+              fi
+            done
+            
+            echo "All deployment attempts failed"
+            return 1
+          }
+          
+          # Execute deployment with retry
+          deploy_with_retry
           
           # Extract deployer address
           DEPLOYER_ADDRESS=$(cast wallet address --private-key $PRIVATE_KEY)
