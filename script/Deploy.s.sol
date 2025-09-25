@@ -71,5 +71,18 @@ contract DeployScript is Script {
         console.log("CertificationTypeManager:", address(certificationTypeManager));
         console.log("CertificationManager:", address(certificationManager));
         console.log("==========================");
+
+        // Write addresses to a text file for easy parsing
+        string memory addresses = string.concat(
+            "ORGANIZATION_CONTRACT=", vm.toString(address(organizationContract)), "\n",
+            "CERTIFICATE_TYPE_CONTRACT=", vm.toString(address(certificateTypeContract)), "\n", 
+            "CERTIFICATE_CONTRACT=", vm.toString(address(certificateContract)), "\n",
+            "ORGANIZATION_MANAGER=", vm.toString(address(organizationManager)), "\n",
+            "CERTIFICATION_TYPE_MANAGER=", vm.toString(address(certificationTypeManager)), "\n",
+            "CERTIFICATION_MANAGER=", vm.toString(address(certificationManager)), "\n"
+        );
+        
+        vm.writeFile("deployment-addresses.txt", addresses);
+        console.log("Contract addresses written to deployment-addresses.txt");
     }
 }
