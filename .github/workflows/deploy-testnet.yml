@@ -113,12 +113,34 @@ jobs:
             return 1
           }
           
-          # Execute deployment with retry
-          deploy_with_retry
+          # Execute deployment with retry and capture output
+          DEPLOYMENT_LOG=$(mktemp)
+          deploy_with_retry | tee "$DEPLOYMENT_LOG"
+          
+          # Extract contract addresses from deployment logs
+          if grep -q "=== DEPLOYMENT SUMMARY ===" "$DEPLOYMENT_LOG"; then
+            ORGANIZATION_CONTRACT=$(grep "Organization Contract:" "$DEPLOYMENT_LOG" | sed 's/.*Organization Contract: //')
+            CERTIFICATE_TYPE_CONTRACT=$(grep "CertificateType Contract:" "$DEPLOYMENT_LOG" | sed 's/.*CertificateType Contract: //')
+            CERTIFICATE_CONTRACT=$(grep "Certificate Contract:" "$DEPLOYMENT_LOG" | sed 's/.*Certificate Contract: //')
+            ORGANIZATION_MANAGER=$(grep "OrganizationManager:" "$DEPLOYMENT_LOG" | sed 's/.*OrganizationManager: //')
+            CERTIFICATION_TYPE_MANAGER=$(grep "CertificationTypeManager:" "$DEPLOYMENT_LOG" | sed 's/.*CertificationTypeManager: //')
+            CERTIFICATION_MANAGER=$(grep "CertificationManager:" "$DEPLOYMENT_LOG" | sed 's/.*CertificationManager: //')
+            
+            # Output contract addresses for summary
+            echo "organization-contract=$ORGANIZATION_CONTRACT" >> $GITHUB_OUTPUT
+            echo "certificate-type-contract=$CERTIFICATE_TYPE_CONTRACT" >> $GITHUB_OUTPUT
+            echo "certificate-contract=$CERTIFICATE_CONTRACT" >> $GITHUB_OUTPUT
+            echo "organization-manager=$ORGANIZATION_MANAGER" >> $GITHUB_OUTPUT
+            echo "certification-type-manager=$CERTIFICATION_TYPE_MANAGER" >> $GITHUB_OUTPUT
+            echo "certification-manager=$CERTIFICATION_MANAGER" >> $GITHUB_OUTPUT
+          fi
           
           # Extract deployer address
           DEPLOYER_ADDRESS=$(cast wallet address --private-key $PRIVATE_KEY)
           echo "deployer-address=$DEPLOYER_ADDRESS" >> $GITHUB_OUTPUT
+          
+          # Clean up temp file
+          rm -f "$DEPLOYMENT_LOG"
 
       - name: Generate build and deployment summary
         run: |
@@ -133,7 +155,29 @@ jobs:
           echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.deploy.outcome }}" = "success" ]; then
             echo "✅ Deployment successful to Sepolia testnet!" >> $GITHUB_STEP_SUMMARY
-            echo "📝 Deployer: \`${{ steps.deploy.outputs.deployer-address }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "📝 **Deployer:** \`${{ steps.deploy.outputs.deployer-address }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📋 Deployed Contract Addresses" >> $GITHUB_STEP_SUMMARY
+            echo "| Contract Name | Address | Etherscan |" >> $GITHUB_STEP_SUMMARY
+            echo "|---------------|---------|-----------|" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.deploy.outputs.organization-contract }}" ]; then
+              echo "| **Organization** | \`${{ steps.deploy.outputs.organization-contract }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.deploy.outputs.organization-contract }}) |" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ -n "${{ steps.deploy.outputs.certificate-type-contract }}" ]; then
+              echo "| **CertificateType** | \`${{ steps.deploy.outputs.certificate-type-contract }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.deploy.outputs.certificate-type-contract }}) |" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ -n "${{ steps.deploy.outputs.certificate-contract }}" ]; then
+              echo "| **Certificate** | \`${{ steps.deploy.outputs.certificate-contract }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.deploy.outputs.certificate-contract }}) |" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ -n "${{ steps.deploy.outputs.organization-manager }}" ]; then
+              echo "| **OrganizationManager** | \`${{ steps.deploy.outputs.organization-manager }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.deploy.outputs.organization-manager }}) |" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ -n "${{ steps.deploy.outputs.certification-type-manager }}" ]; then
+              echo "| **CertificationTypeManager** | \`${{ steps.deploy.outputs.certification-type-manager }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.deploy.outputs.certification-type-manager }}) |" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ -n "${{ steps.deploy.outputs.certification-manager }}" ]; then
+              echo "| **CertificationManager** | \`${{ steps.deploy.outputs.certification-manager }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.deploy.outputs.certification-manager }}) |" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "❌ Deployment failed!" >> $GITHUB_STEP_SUMMARY
           fi
