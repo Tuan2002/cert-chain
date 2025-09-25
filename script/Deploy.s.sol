@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "forge-std/Script.sol";
+import "forge-std/console.sol";
+import "../src/contracts/Organization.sol";
+import "../src/contracts/CertificateType.sol";
+import "../src/contracts/Certificate.sol";
+import "../src/OrganizationManager.sol";
+import "../src/CertificationTypeManager.sol";
+import "../src/CertificationManager.sol";
+
+contract DeployScript is Script {
+    function setUp() public {}
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
+        
+        console.log("Deploying contracts with the account:", deployer);
+        console.log("Account balance:", deployer.balance);
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // Deploy base contracts first
+        Organization organizationContract = new Organization(deployer);
+        console.log("Organization deployed to:", address(organizationContract));
+
+        CertificateType certificateTypeContract = new CertificateType(deployer);
+        console.log("CertificateType deployed to:", address(certificateTypeContract));
+
+        Certificate certificateContract = new Certificate(
+            deployer,
+            address(organizationContract),
+            address(certificateTypeContract)
+        );
+        console.log("Certificate deployed to:", address(certificateContract));
+
+        // Deploy manager contracts
+        OrganizationManager organizationManager = new OrganizationManager(
+            deployer, // admin
+            address(organizationContract)
+        );
+        console.log("OrganizationManager deployed to:", address(organizationManager));
+
+        CertificationTypeManager certificationTypeManager = new CertificationTypeManager(
+            deployer, // admin
+            address(certificateTypeContract)
+        );
+        console.log("CertificationTypeManager deployed to:", address(certificationTypeManager));
+
+        // Deploy main certification manager
+        CertificationManager certificationManager = new CertificationManager(deployer);
+        console.log("CertificationManager deployed to:", address(certificationManager));
+
+        // Initialize the certification manager with contract addresses
+        certificationManager.initializeContracts(
+            address(organizationContract),
+            address(certificateTypeContract),
+            address(certificateContract),
+            address(organizationManager),
+            address(certificationTypeManager)
+        );
+
+        vm.stopBroadcast();
+
+        // Write deployment addresses to file
+        string memory deploymentInfo = string.concat(
+            "ORGANIZATION_CONTRACT=", vm.toString(address(organizationContract)), "\n",
+            "CERTIFICATE_TYPE_CONTRACT=", vm.toString(address(certificateTypeContract)), "\n",
+            "CERTIFICATE_CONTRACT=", vm.toString(address(certificateContract)), "\n",
+            "ORGANIZATION_MANAGER=", vm.toString(address(organizationManager)), "\n",
+            "CERTIFICATION_TYPE_MANAGER=", vm.toString(address(certificationTypeManager)), "\n",
+            "CERTIFICATION_MANAGER=", vm.toString(address(certificationManager)), "\n"
+        );
+        
+        vm.writeFile("./deployment-addresses.txt", deploymentInfo);
+        console.log("Deployment addresses saved to deployment-addresses.txt");
+
+        // Log deployment summary
+        console.log("\n=== DEPLOYMENT SUMMARY ===");
+        console.log("Organization Contract:", address(organizationContract));
+        console.log("CertificateType Contract:", address(certificateTypeContract));
+        console.log("Certificate Contract:", address(certificateContract));
+        console.log("OrganizationManager:", address(organizationManager));
+        console.log("CertificationTypeManager:", address(certificationTypeManager));
+        console.log("CertificationManager:", address(certificationManager));
+        console.log("==========================");
+    }
+}

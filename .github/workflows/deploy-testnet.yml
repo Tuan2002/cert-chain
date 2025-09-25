@@ -1,0 +1,266 @@
+name: Deploy to Ethereum Sepolia Testnet
+
+on:
+  push:
+    branches:
+     - develop
+
+jobs:
+  test:
+    name: Test Contracts
+    runs-on: ubuntu-latest
+    environment: Development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run tests
+        run: forge test --gas-report
+        id: test
+
+      - name: Generate test summary
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test.outcome }}" = "success" ]; then
+            echo "All tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Tests failed!" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  build:
+    name: Build Contracts
+    runs-on: ubuntu-latest
+    environment: Development
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Build contracts
+        run: forge build --sizes
+        id: build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-artifacts
+          path: |
+            out/
+            script/
+          retention-days: 7
+
+      - name: Generate build summary
+        run: |
+          echo "## 🔨 Build Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            echo "Build successful!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Build failed!" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    name: Deploy to Sepolia
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    environment: Development
+
+    outputs:
+      deployment-addresses: ${{ steps.deploy.outputs.deployment-addresses }}
+      tx-hash: ${{ steps.deploy.outputs.tx-hash }}
+      deployer-address: ${{ steps.deploy.outputs.deployer-address }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-artifacts
+
+      - name: Verify environment variables
+        run: |
+          if [ -z "${{ vars.SEPOLIA_RPC_URL }}" ]; then
+            echo "SEPOLIA_RPC_URL secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.OWNER_WALLET_PRIVATE_KEY }}" ]; then
+            echo "PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+          echo "Environment variables verified"
+
+      - name: Deploy contracts
+        id: deploy
+        env:
+          RPC_URL: ${{ vars.SEPOLIA_RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.OWNER_WALLET_PRIVATE_KEY }}
+        run: |
+          echo "🚀 Starting deployment to Sepolia testnet..."
+          
+          # Deploy contracts using forge script
+          forge script script/Deploy.s.sol:DeployScript \
+            --rpc-url $RPC_URL \
+            --private-key $PRIVATE_KEY \
+            --broadcast \
+            --verify \
+            --etherscan-api-key ${{ secrets.ETHERSCAN_API_KEY }} \
+            -vvvv
+          
+          # Extract deployer address
+          DEPLOYER_ADDRESS=$(cast wallet address --private-key $PRIVATE_KEY)
+          echo "deployer-address=$DEPLOYER_ADDRESS" >> $GITHUB_OUTPUT
+          
+          # Read deployment addresses from file
+          if [ -f "deployment-addresses.txt" ]; then
+            ADDRESSES=$(cat deployment-addresses.txt)
+            echo "deployment-addresses<<EOF" >> $GITHUB_OUTPUT
+            echo "$ADDRESSES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            # Extract transaction hash from broadcast logs
+            BROADCAST_DIR="broadcast/Deploy.s.sol/11155111"
+            if [ -d "$BROADCAST_DIR" ]; then
+              LATEST_RUN=$(ls -t "$BROADCAST_DIR"/run-*.json | head -1)
+              if [ -f "$LATEST_RUN" ]; then
+                TX_HASH=$(jq -r '.transactions[0].hash // empty' "$LATEST_RUN")
+                if [ -n "$TX_HASH" ]; then
+                  echo "tx-hash=$TX_HASH" >> $GITHUB_OUTPUT
+                fi
+              fi
+            fi
+          else
+            echo "❌ Deployment addresses file not found"
+            exit 1
+          fi
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-artifacts
+          path: |
+            deployment-addresses.txt
+            broadcast/
+          retention-days: 30
+
+      - name: Generate deployment summary
+        run: |
+          echo "## 🚀 Deployment Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.deploy.outcome }}" = "success" ]; then
+            echo "✅ Deployment successful to Sepolia testnet!" >> $GITHUB_STEP_SUMMARY
+            echo "📝 Deployer: \`${{ steps.deploy.outputs.deployer-address }}\`" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.deploy.outputs.tx-hash }}" ]; then
+              echo "🔗 Transaction: [View on Etherscan](https://sepolia.etherscan.io/tx/${{ steps.deploy.outputs.tx-hash }})" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Deployment failed!" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    
+    needs: deploy
+    if: needs.deploy.result == 'success'
+    steps:
+      - name: Download deployment artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-artifacts
+
+      - name: Parse contract addresses
+        id: parse
+        run: |
+          if [ -f "deployment-addresses.txt" ]; then
+            # Parse addresses from deployment file
+            ORGANIZATION_CONTRACT=$(grep "ORGANIZATION_CONTRACT=" deployment-addresses.txt | cut -d'=' -f2)
+            CERTIFICATE_TYPE_CONTRACT=$(grep "CERTIFICATE_TYPE_CONTRACT=" deployment-addresses.txt | cut -d'=' -f2)
+            CERTIFICATE_CONTRACT=$(grep "CERTIFICATE_CONTRACT=" deployment-addresses.txt | cut -d'=' -f2)
+            ORGANIZATION_MANAGER=$(grep "ORGANIZATION_MANAGER=" deployment-addresses.txt | cut -d'=' -f2)
+            CERTIFICATION_TYPE_MANAGER=$(grep "CERTIFICATION_TYPE_MANAGER=" deployment-addresses.txt | cut -d'=' -f2)
+            CERTIFICATION_MANAGER=$(grep "CERTIFICATION_MANAGER=" deployment-addresses.txt | cut -d'=' -f2)
+            
+            # Set outputs
+            echo "organization-contract=$ORGANIZATION_CONTRACT" >> $GITHUB_OUTPUT
+            echo "certificate-type-contract=$CERTIFICATE_TYPE_CONTRACT" >> $GITHUB_OUTPUT
+            echo "certificate-contract=$CERTIFICATE_CONTRACT" >> $GITHUB_OUTPUT
+            echo "organization-manager=$ORGANIZATION_MANAGER" >> $GITHUB_OUTPUT
+            echo "certification-type-manager=$CERTIFICATION_TYPE_MANAGER" >> $GITHUB_OUTPUT
+            echo "certification-manager=$CERTIFICATION_MANAGER" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Deployment addresses file not found"
+            exit 1
+          fi
+
+      - name: Deployment Summary
+        run: |
+          echo "# 📋 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎯 Deployment Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Network:** Ethereum Sepolia Testnet" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chain ID:** 11155111" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployer:** \`${{ needs.deploy.outputs.deployer-address }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ needs.deploy.outputs.tx-hash }}" ]; then
+            echo "- **Transaction:** [View on Etherscan](https://sepolia.etherscan.io/tx/${{ needs.deploy.outputs.tx-hash }})" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📜 Contract Addresses" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Core Contracts" >> $GITHUB_STEP_SUMMARY
+          echo "| Contract | Address | Etherscan Link |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|---------|----------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Organization** | \`${{ steps.parse.outputs.organization-contract }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.parse.outputs.organization-contract }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CertificateType** | \`${{ steps.parse.outputs.certificate-type-contract }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.parse.outputs.certificate-type-contract }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Certificate** | \`${{ steps.parse.outputs.certificate-contract }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.parse.outputs.certificate-contract }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Manager Contracts" >> $GITHUB_STEP_SUMMARY
+          echo "| Contract | Address | Etherscan Link |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|---------|----------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **OrganizationManager** | \`${{ steps.parse.outputs.organization-manager }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.parse.outputs.organization-manager }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CertificationTypeManager** | \`${{ steps.parse.outputs.certification-type-manager }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.parse.outputs.certification-type-manager }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CertificationManager** | \`${{ steps.parse.outputs.certification-manager }}\` | [View](https://sepolia.etherscan.io/address/${{ steps.parse.outputs.certification-manager }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🔧 Environment Variables for Frontend/Backend" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`env" >> $GITHUB_STEP_SUMMARY
+          echo "# Ethereum Sepolia Testnet Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "NETWORK=sepolia" >> $GITHUB_STEP_SUMMARY
+          echo "CHAIN_ID=11155111" >> $GITHUB_STEP_SUMMARY
+          echo "RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Contract Addresses" >> $GITHUB_STEP_SUMMARY
+          echo "ORGANIZATION_CONTRACT=${{ steps.parse.outputs.organization-contract }}" >> $GITHUB_STEP_SUMMARY
+          echo "CERTIFICATE_TYPE_CONTRACT=${{ steps.parse.outputs.certificate-type-contract }}" >> $GITHUB_STEP_SUMMARY
+          echo "CERTIFICATE_CONTRACT=${{ steps.parse.outputs.certificate-contract }}" >> $GITHUB_STEP_SUMMARY
+          echo "ORGANIZATION_MANAGER=${{ steps.parse.outputs.organization-manager }}" >> $GITHUB_STEP_SUMMARY
+          echo "CERTIFICATION_TYPE_MANAGER=${{ steps.parse.outputs.certification-type-manager }}" >> $GITHUB_STEP_SUMMARY
+          echo "CERTIFICATION_MANAGER=${{ steps.parse.outputs.certification-manager }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
