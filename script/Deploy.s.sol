@@ -62,19 +62,6 @@ contract DeployScript is Script {
 
         vm.stopBroadcast();
 
-        // Write deployment addresses to file
-        string memory deploymentInfo = string.concat(
-            "ORGANIZATION_CONTRACT=", vm.toString(address(organizationContract)), "\n",
-            "CERTIFICATE_TYPE_CONTRACT=", vm.toString(address(certificateTypeContract)), "\n",
-            "CERTIFICATE_CONTRACT=", vm.toString(address(certificateContract)), "\n",
-            "ORGANIZATION_MANAGER=", vm.toString(address(organizationManager)), "\n",
-            "CERTIFICATION_TYPE_MANAGER=", vm.toString(address(certificationTypeManager)), "\n",
-            "CERTIFICATION_MANAGER=", vm.toString(address(certificationManager)), "\n"
-        );
-        
-        vm.writeFile("./deployment-addresses.txt", deploymentInfo);
-        console.log("Deployment addresses saved to deployment-addresses.txt");
-
         // Log deployment summary
         console.log("\n=== DEPLOYMENT SUMMARY ===");
         console.log("Organization Contract:", address(organizationContract));
