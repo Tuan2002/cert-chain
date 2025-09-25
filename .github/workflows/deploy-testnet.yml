@@ -18,8 +18,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
       - name: Run tests
         run: forge test --gas-report
@@ -51,8 +49,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
       - name: Build contracts
         run: forge build --sizes
@@ -119,20 +115,33 @@ jobs:
           
           # Extract contract addresses from deployment logs
           if grep -q "=== DEPLOYMENT SUMMARY ===" "$DEPLOYMENT_LOG"; then
-            ORGANIZATION_CONTRACT=$(grep "Organization Contract:" "$DEPLOYMENT_LOG" | sed 's/.*Organization Contract: //')
-            CERTIFICATE_TYPE_CONTRACT=$(grep "CertificateType Contract:" "$DEPLOYMENT_LOG" | sed 's/.*CertificateType Contract: //')
-            CERTIFICATE_CONTRACT=$(grep "Certificate Contract:" "$DEPLOYMENT_LOG" | sed 's/.*Certificate Contract: //')
-            ORGANIZATION_MANAGER=$(grep "OrganizationManager:" "$DEPLOYMENT_LOG" | sed 's/.*OrganizationManager: //')
-            CERTIFICATION_TYPE_MANAGER=$(grep "CertificationTypeManager:" "$DEPLOYMENT_LOG" | sed 's/.*CertificationTypeManager: //')
-            CERTIFICATION_MANAGER=$(grep "CertificationManager:" "$DEPLOYMENT_LOG" | sed 's/.*CertificationManager: //')
+            # Extract addresses and clean them (remove any extra characters)
+            ORGANIZATION_CONTRACT=$(grep "Organization Contract:" "$DEPLOYMENT_LOG" | sed 's/.*Organization Contract: //' | tr -d '\r\n' | sed 's/[^0-9a-fA-Fx]//g')
+            CERTIFICATE_TYPE_CONTRACT=$(grep "CertificateType Contract:" "$DEPLOYMENT_LOG" | sed 's/.*CertificateType Contract: //' | tr -d '\r\n' | sed 's/[^0-9a-fA-Fx]//g')
+            CERTIFICATE_CONTRACT=$(grep "Certificate Contract:" "$DEPLOYMENT_LOG" | sed 's/.*Certificate Contract: //' | tr -d '\r\n' | sed 's/[^0-9a-fA-Fx]//g')
+            ORGANIZATION_MANAGER=$(grep "OrganizationManager:" "$DEPLOYMENT_LOG" | sed 's/.*OrganizationManager: //' | tr -d '\r\n' | sed 's/[^0-9a-fA-Fx]//g')
+            CERTIFICATION_TYPE_MANAGER=$(grep "CertificationTypeManager:" "$DEPLOYMENT_LOG" | sed 's/.*CertificationTypeManager: //' | tr -d '\r\n' | sed 's/[^0-9a-fA-Fx]//g')
+            CERTIFICATION_MANAGER=$(grep "CertificationManager:" "$DEPLOYMENT_LOG" | sed 's/.*CertificationManager: //' | tr -d '\r\n' | sed 's/[^0-9a-fA-Fx]//g')
             
-            # Output contract addresses for summary
-            echo "organization-contract=$ORGANIZATION_CONTRACT" >> $GITHUB_OUTPUT
-            echo "certificate-type-contract=$CERTIFICATE_TYPE_CONTRACT" >> $GITHUB_OUTPUT
-            echo "certificate-contract=$CERTIFICATE_CONTRACT" >> $GITHUB_OUTPUT
-            echo "organization-manager=$ORGANIZATION_MANAGER" >> $GITHUB_OUTPUT
-            echo "certification-type-manager=$CERTIFICATION_TYPE_MANAGER" >> $GITHUB_OUTPUT
-            echo "certification-manager=$CERTIFICATION_MANAGER" >> $GITHUB_OUTPUT
+            # Validate addresses before outputting (must be 42 characters starting with 0x)
+            if [[ $ORGANIZATION_CONTRACT =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+              echo "organization-contract=${ORGANIZATION_CONTRACT}" >> $GITHUB_OUTPUT
+            fi
+            if [[ $CERTIFICATE_TYPE_CONTRACT =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+              echo "certificate-type-contract=${CERTIFICATE_TYPE_CONTRACT}" >> $GITHUB_OUTPUT
+            fi
+            if [[ $CERTIFICATE_CONTRACT =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+              echo "certificate-contract=${CERTIFICATE_CONTRACT}" >> $GITHUB_OUTPUT
+            fi
+            if [[ $ORGANIZATION_MANAGER =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+              echo "organization-manager=${ORGANIZATION_MANAGER}" >> $GITHUB_OUTPUT
+            fi
+            if [[ $CERTIFICATION_TYPE_MANAGER =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+              echo "certification-type-manager=${CERTIFICATION_TYPE_MANAGER}" >> $GITHUB_OUTPUT
+            fi
+            if [[ $CERTIFICATION_MANAGER =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+              echo "certification-manager=${CERTIFICATION_MANAGER}" >> $GITHUB_OUTPUT
+            fi
           fi
           
           # Extract deployer address
@@ -144,7 +153,7 @@ jobs:
 
       - name: Generate build and deployment summary
         run: |
-          echo "## � Build & Deploy Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Deploy Results" >> $GITHUB_STEP_SUMMARY
           echo "### Build Status" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.build.outcome }}" = "success" ]; then
             echo "✅ Build successful!" >> $GITHUB_STEP_SUMMARY
