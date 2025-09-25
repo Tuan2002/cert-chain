@@ -225,30 +225,6 @@ contract Certificate is AccessControl {
         emit CertificateRevoked(_certId, msg.sender, _reason);
     }
 
-    /**
-     * @dev Remove a pending certificate (organization owners/managers only)
-     * @param _certId Certificate ID
-     */
-    function removePendingCertificate(string memory _certId) 
-        external 
-        onlyExistingCertificate(_certId) 
-    {
-        CertificateData storage cert = certificates[_certId];
-        require(cert.status == CertificateStatus.Pending, "Certificate is not pending");
-        require(_canManageOrganization(cert.organizationId, msg.sender), "Not authorized for this organization");
-
-        // Remove from all tracking mappings
-        _removeFromOrganizationArray(cert.organizationId, _certId);
-        _removeFromTypeArray(cert.certificateTypeId, _certId);
-        _removeFromHolderArray(cert.holderIdCard, _certId);
-        _removeFromStatusArray(CertificateStatus.Pending, _certId);
-
-        // Delete the certificate
-        delete certificates[_certId];
-
-        emit CertificateRemoved(_certId, msg.sender);
-    }
-
     // Internal functions
     function _isValidOrganization(string memory _orgId) private view returns (bool) {
         (bool success, bytes memory data) = organizationContract.staticcall(
@@ -299,39 +275,6 @@ contract Certificate is AccessControl {
             if (keccak256(bytes(statusArray[i])) == keccak256(bytes(_certId))) {
                 statusArray[i] = statusArray[statusArray.length - 1];
                 statusArray.pop();
-                break;
-            }
-        }
-    }
-
-    function _removeFromOrganizationArray(string memory _orgId, string memory _certId) private {
-        string[] storage orgArray = organizationCertificates[_orgId];
-        for (uint256 i = 0; i < orgArray.length; i++) {
-            if (keccak256(bytes(orgArray[i])) == keccak256(bytes(_certId))) {
-                orgArray[i] = orgArray[orgArray.length - 1];
-                orgArray.pop();
-                break;
-            }
-        }
-    }
-
-    function _removeFromTypeArray(string memory _typeId, string memory _certId) private {
-        string[] storage typeArray = typeCertificates[_typeId];
-        for (uint256 i = 0; i < typeArray.length; i++) {
-            if (keccak256(bytes(typeArray[i])) == keccak256(bytes(_certId))) {
-                typeArray[i] = typeArray[typeArray.length - 1];
-                typeArray.pop();
-                break;
-            }
-        }
-    }
-
-    function _removeFromHolderArray(string memory _holderIdCard, string memory _certId) private {
-        string[] storage holderArray = holderCertificates[_holderIdCard];
-        for (uint256 i = 0; i < holderArray.length; i++) {
-            if (keccak256(bytes(holderArray[i])) == keccak256(bytes(_certId))) {
-                holderArray[i] = holderArray[holderArray.length - 1];
-                holderArray.pop();
                 break;
             }
         }
@@ -393,22 +336,5 @@ contract Certificate is AccessControl {
         CertificateData memory cert = certificates[_certId];
         return cert.status == CertificateStatus.Approved && 
                block.timestamp <= cert.expireTime;
-    }
-
-    // Admin functions to update contract addresses
-    function updateOrganizationContract(address _newAddress) 
-        external 
-        onlyRole(ADMIN_ROLE) 
-    {
-        require(_newAddress != address(0), "Invalid address");
-        organizationContract = _newAddress;
-    }
-
-    function updateCertificateTypeContract(address _newAddress) 
-        external 
-        onlyRole(ADMIN_ROLE) 
-    {
-        require(_newAddress != address(0), "Invalid address");
-        certificateTypeContract = _newAddress;
     }
 }

@@ -296,46 +296,6 @@ contract CertificateTest is Test {
         certificate.revokeCertificate(CERT_ID, "");
     }
 
-    // Test removing pending certificate
-    function testRemovePendingCertificate() public {
-        _submitTestCertificate();
-
-        vm.expectEmit(true, false, false, true);
-        emit CertificateRemoved(CERT_ID, orgOwner);
-
-        vm.prank(orgOwner);
-        certificate.removePendingCertificate(CERT_ID);
-
-        // Certificate should no longer exist
-        assertFalse(certificate.certificateExists(CERT_ID));
-    }
-
-    function testRemovePendingCertificateByManager() public {
-        _submitTestCertificate();
-
-        vm.prank(orgManager);
-        certificate.removePendingCertificate(CERT_ID);
-
-        assertFalse(certificate.certificateExists(CERT_ID));
-    }
-
-    function testRemovePendingCertificateFailsWithNonPendingStatus() public {
-        _submitTestCertificate();
-        _approveTestCertificate();
-
-        vm.prank(orgOwner);
-        vm.expectRevert("Certificate is not pending");
-        certificate.removePendingCertificate(CERT_ID);
-    }
-
-    function testRemovePendingCertificateFailsWithUnauthorized() public {
-        _submitTestCertificate();
-
-        vm.prank(nonAuthorized);
-        vm.expectRevert("Not authorized for this organization");
-        certificate.removePendingCertificate(CERT_ID);
-    }
-
     // Test view functions
     function testGetCertificatesByOrganization() public {
         _submitTestCertificate();
@@ -396,29 +356,6 @@ contract CertificateTest is Test {
 
         _submitAnotherCertificate();
         assertEq(certificate.getCertificateCount(), 2);
-    }
-
-    // Test contract address updates
-    function testUpdateOrganizationContract() public {
-        address newOrgContract = makeAddr("newOrgContract");
-        
-        vm.prank(admin);
-        certificate.updateOrganizationContract(newOrgContract);
-        assertEq(certificate.organizationContract(), newOrgContract);
-    }
-
-    function testUpdateOrganizationContractFailsWithZeroAddress() public {
-        vm.expectRevert("Invalid address");
-        vm.prank(admin);
-        certificate.updateOrganizationContract(address(0));
-    }
-
-    function testUpdateCertificateTypeContract() public {
-        address newTypeContract = makeAddr("newTypeContract");
-        
-        vm.prank(admin);
-        certificate.updateCertificateTypeContract(newTypeContract);
-        assertEq(certificate.certificateTypeContract(), newTypeContract);
     }
 
     // Helper functions

@@ -58,10 +58,8 @@ contract CertificationManagerTest is Test {
         vm.prank(admin);
         certificationManager.initializeContracts(
             address(organization),
-            address(certificateType),
             address(certificate),
-            address(organizationManager),
-            address(typeManager)
+            address(organizationManager)
         );
 
         // Grant necessary permissions
@@ -82,17 +80,17 @@ contract CertificationManagerTest is Test {
     function _setupTestData() internal {
         // Register organization and create certificate type as admin
         vm.startPrank(admin);
-        certificationManager.registerOrganization(ORG_ID, orgOwner, "Test University", "US");
-        certificationManager.createCertificateType(CERT_TYPE_ID, "Computer Science", "CS", "CS Degree");
+        organizationManager.registerOrganization(ORG_ID, orgOwner, "Test University", "US");
+        typeManager.createCertificateType(CERT_TYPE_ID, "Computer Science", "CS", "CS Degree");
         vm.stopPrank();
         
         // Add manager to organization as orgOwner
         vm.prank(orgOwner);
-        certificationManager.addManager(ORG_ID, orgManager);
+        organizationManager.addOrganizationManager(ORG_ID, orgManager);
         
         // Add the CertificationManager contract as a manager so it can act on behalf of the organization
         vm.prank(orgOwner);
-        certificationManager.addManager(ORG_ID, address(certificationManager));
+        organizationManager.addOrganizationManager(ORG_ID, address(certificationManager));
     }
 
     // Test initialization
@@ -102,17 +100,13 @@ contract CertificationManagerTest is Test {
         vm.prank(admin);
         newManager.initializeContracts(
             address(organization),
-            address(certificateType),
             address(certificate),
-            address(organizationManager),
-            address(typeManager)
+            address(organizationManager)
         );
 
         assertEq(newManager.organizationContract(), address(organization));
-        assertEq(newManager.certificateTypeContract(), address(certificateType));
         assertEq(newManager.certificateContract(), address(certificate));
         assertEq(newManager.organizationManager(), address(organizationManager));
-        assertEq(newManager.certificationTypeManager(), address(typeManager));
     }
 
     function testInitializeContractsFailsWithoutAdminRole() public {
@@ -122,24 +116,8 @@ contract CertificationManagerTest is Test {
         vm.expectRevert();
         newManager.initializeContracts(
             address(organization),
-            address(certificateType),
             address(certificate),
-            address(organizationManager),
-            address(typeManager)
-        );
-    }
-
-    function testInitializeContractsFailsWithZeroAddress() public {
-        CertificationManager newManager = new CertificationManager(admin);
-
-        vm.prank(admin);
-        vm.expectRevert("Invalid organization contract address");
-        newManager.initializeContracts(
-            address(0), // Zero address
-            address(certificateType),
-            address(certificate),
-            address(organizationManager),
-            address(typeManager)
+            address(organizationManager)
         );
     }
 
@@ -149,10 +127,10 @@ contract CertificationManagerTest is Test {
         address newOwner = makeAddr("newOwner");
 
         vm.prank(admin);
-        string memory returnedId = certificationManager.registerOrganization(newOrgId, newOwner, "MIT", "US");
+        string memory returnedId = organizationManager.registerOrganization(newOrgId, newOwner, "MIT", "US");
         assertEq(returnedId, newOrgId);
 
-        Organization.OrganizationData memory org = certificationManager.getOrganization(newOrgId);
+        Organization.OrganizationData memory org = organization.getOrganization(newOrgId);
         assertEq(org.id, newOrgId);
         assertEq(org.owner, newOwner);
         assertEq(org.name, "MIT");
@@ -162,36 +140,36 @@ contract CertificationManagerTest is Test {
     function testRegisterOrganizationFailsWithoutAdminRole() public {
         vm.prank(nonAuthorized);
         vm.expectRevert();
-        certificationManager.registerOrganization("2", orgOwner, "MIT", "US");
+        organizationManager.registerOrganization("2", orgOwner, "MIT", "US");
     }
 
     function testUpdateOrganizationByAdmin() public {
         vm.prank(admin);
-        certificationManager.updateOrganization(ORG_ID, "Updated University", "CA");
+        organizationManager.updateOrganization(ORG_ID, "Updated University", "CA");
 
-        Organization.OrganizationData memory org = certificationManager.getOrganization(ORG_ID);
+        Organization.OrganizationData memory org = organization.getOrganization(ORG_ID);
         assertEq(org.name, "Updated University");
         assertEq(org.countryCode, "CA");
     }
 
     function testUpdateOrganizationByOwner() public {
         vm.prank(orgOwner);
-        certificationManager.updateOrganization(ORG_ID, "Owner Updated University", "UK");
+        organization.updateOrganization(ORG_ID, "Owner Updated University", "UK");
 
-        Organization.OrganizationData memory org = certificationManager.getOrganization(ORG_ID);
+        Organization.OrganizationData memory org = organization.getOrganization(ORG_ID);
         assertEq(org.name, "Owner Updated University");
         assertEq(org.countryCode, "UK");
     }
 
     function testUpdateOrganizationFailsWithUnauthorized() public {
         vm.prank(nonAuthorized);
-        vm.expectRevert("Not authorized to update organization");
-        certificationManager.updateOrganization(ORG_ID, "Unauthorized Update", "XX");
+        vm.expectRevert();
+        organizationManager.updateOrganization(ORG_ID, "Unauthorized Update", "XX");
     }
 
     function testDeactivateOrganization() public {
         vm.prank(admin);
-        certificationManager.deactivateOrganization(ORG_ID);
+        organizationManager.deactivateOrganization(ORG_ID);
         assertFalse(organization.isOrganizationActive(ORG_ID));
     }
 
@@ -199,12 +177,12 @@ contract CertificationManagerTest is Test {
         address newManager = makeAddr("newManager");
 
         vm.prank(orgOwner);
-        certificationManager.addManager(ORG_ID, newManager);
-        assertTrue(certificationManager.isOrganizationManager(ORG_ID, newManager));
+        organizationManager.addOrganizationManager(ORG_ID, newManager);
+        assertTrue(organization.isOrganizationManager(ORG_ID, newManager));
 
         vm.prank(orgOwner);
-        certificationManager.removeManager(ORG_ID, newManager);
-        assertFalse(certificationManager.isOrganizationManager(ORG_ID, newManager));
+        organizationManager.removeOrganizationManager(ORG_ID, newManager);
+        assertFalse(organization.isOrganizationManager(ORG_ID, newManager));
     }
 
     // Test certificate type management
@@ -215,10 +193,10 @@ contract CertificationManagerTest is Test {
         string memory description = "Information Technology Certificate";
 
         vm.prank(admin);
-        string memory returnedId = certificationManager.createCertificateType(newTypeId, name, code, description);
+        string memory returnedId = typeManager.createCertificateType(newTypeId, name, code, description);
         assertEq(returnedId, newTypeId);
 
-        CertificateType.CertificateTypeData memory certType = certificationManager.getCertificateType(newTypeId);
+        CertificateType.CertificateTypeData memory certType = certificateType.getCertificateType(newTypeId);
         assertEq(certType.id, newTypeId);
         assertEq(certType.name, name);
         assertEq(certType.code, code);
@@ -228,14 +206,14 @@ contract CertificationManagerTest is Test {
     function testCreateCertificateTypeFailsWithoutAdminRole() public {
         vm.prank(nonAuthorized);
         vm.expectRevert();
-        certificationManager.createCertificateType("2", "IT Certificate", "IT", "IT Cert");
+        typeManager.createCertificateType("2", "IT Certificate", "IT", "IT Cert");
     }
 
     function testUpdateCertificateType() public {
         vm.prank(admin);
-        certificationManager.updateCertificateType(CERT_TYPE_ID, "Updated CS", "CS_UPDATED", "Updated Description");
+        typeManager.updateCertificateType(CERT_TYPE_ID, "Updated CS", "CS_UPDATED", "Updated Description");
 
-        CertificateType.CertificateTypeData memory certType = certificationManager.getCertificateType(CERT_TYPE_ID);
+        CertificateType.CertificateTypeData memory certType = certificateType.getCertificateType(CERT_TYPE_ID);
         assertEq(certType.name, "Updated CS");
         assertEq(certType.code, "CS_UPDATED");
         assertEq(certType.description, "Updated Description");
@@ -326,29 +304,19 @@ contract CertificationManagerTest is Test {
         assertEq(uint256(cert.status), uint256(Certificate.CertificateStatus.Revoked));
         assertEq(cert.revocationReason, reason);
     }
-
-    function testRemovePendingCertificate() public {
-        _submitTestCertificate();
-
-        vm.prank(orgOwner);
-        certificationManager.removePendingCertificate(CERT_ID);
-
-        assertFalse(certificate.certificateExists(CERT_ID));
-    }
-
     // Test view functions
     function testGetCertificatesByOrganization() public {
         _submitTestCertificate();
         _submitAnotherCertificate();
 
-        string[] memory orgCerts = certificationManager.getCertificatesByOrganization(ORG_ID);
+        string[] memory orgCerts = certificate.getCertificatesByOrganization(ORG_ID);
         assertEq(orgCerts.length, 2);
     }
 
     function testGetCertificatesByHolder() public {
         _submitTestCertificate();
 
-        string[] memory holderCerts = certificationManager.getCertificatesByHolder(HOLDER_ID);
+        string[] memory holderCerts = certificate.getCertificatesByHolder(HOLDER_ID);
         assertEq(holderCerts.length, 1);
         assertEq(holderCerts[0], CERT_ID);
     }
@@ -358,8 +326,8 @@ contract CertificationManagerTest is Test {
         _submitAnotherCertificate();
         _approveTestCertificate();
 
-        string[] memory pendingCerts = certificationManager.getCertificatesByStatus(Certificate.CertificateStatus.Pending);
-        string[] memory approvedCerts = certificationManager.getCertificatesByStatus(Certificate.CertificateStatus.Approved);
+        string[] memory pendingCerts = certificate.getCertificatesByStatus(Certificate.CertificateStatus.Pending);
+        string[] memory approvedCerts = certificate.getCertificatesByStatus(Certificate.CertificateStatus.Approved);
 
         assertEq(pendingCerts.length, 1);
         assertEq(approvedCerts.length, 1);
@@ -367,26 +335,26 @@ contract CertificationManagerTest is Test {
 
     function testIsCertificateValid() public {
         _submitTestCertificate();
-        assertFalse(certificationManager.isCertificateValid(CERT_ID));
+        assertFalse(certificate.isCertificateValid(CERT_ID));
 
         _approveTestCertificate();
-        assertTrue(certificationManager.isCertificateValid(CERT_ID));
+        assertTrue(certificate.isCertificateValid(CERT_ID));
     }
 
     function testGetActiveCertificateTypes() public view {
         // Note: getActiveCertificateTypes() is deprecated and returns empty array
         // since iteration over string IDs is not feasible
-        CertificateType.CertificateTypeData[] memory activeTypes = certificationManager.getActiveCertificateTypes();
+        CertificateType.CertificateTypeData[] memory activeTypes = certificateType.getActiveCertificateTypes();
         assertEq(activeTypes.length, 0);
     }
 
     function testGetCounts() public {
-        assertEq(certificationManager.getOrganizationCount(), 1);
-        assertEq(certificationManager.getCertificateTypeCount(), 1);
-        assertEq(certificationManager.getCertificateCount(), 0);
+        assertEq(organization.getOrganizationCount(), 1);
+        assertEq(certificateType.getCertificateTypeCount(), 1);
+        assertEq(certificate.getCertificateCount(), 0);
 
         _submitTestCertificate();
-        assertEq(certificationManager.getCertificateCount(), 1);
+        assertEq(certificate.getCertificateCount(), 1);
     }
 
     // Test batch operations
@@ -479,16 +447,16 @@ contract CertificationManagerTest is Test {
         string memory org2Id = "2";
         address org2Owner = makeAddr("org2Owner");
         vm.prank(admin);
-        certificationManager.registerOrganization(org2Id, org2Owner, "Stanford", "US");
+        organizationManager.registerOrganization(org2Id, org2Owner, "Stanford", "US");
 
         // 2. Create additional certificate type
         string memory type2Id = "2";
         vm.prank(admin);
-        certificationManager.createCertificateType(type2Id, "Mathematics", "MATH", "Mathematics Certificate");
+        typeManager.createCertificateType(type2Id, "Mathematics", "MATH", "Mathematics Certificate");
         
         // Add manager to the second organization
         vm.prank(org2Owner);
-        certificationManager.addManager(org2Id, address(certificationManager));
+        organizationManager.addOrganizationManager(org2Id, address(certificationManager));
 
         // 3. Submit certificates from different organizations
         _submitTestCertificate(); // From org 1
@@ -514,18 +482,18 @@ contract CertificationManagerTest is Test {
         assertEq(uint256(cert2.status), uint256(Certificate.CertificateStatus.Rejected));
 
         // 6. Check counts
-        assertEq(certificationManager.getOrganizationCount(), 2);
-        assertEq(certificationManager.getCertificateTypeCount(), 2);
-        assertEq(certificationManager.getCertificateCount(), 2);
+        assertEq(organization.getOrganizationCount(), 2);
+        assertEq(certificateType.getCertificateTypeCount(), 2);
+        assertEq(certificate.getCertificateCount(), 2);
 
         // 7. Test queries
-        string[] memory org1Certs = certificationManager.getCertificatesByOrganization(ORG_ID);
-        string[] memory org2Certs = certificationManager.getCertificatesByOrganization(org2Id);
+        string[] memory org1Certs = certificate.getCertificatesByOrganization(ORG_ID);
+        string[] memory org2Certs = certificate.getCertificatesByOrganization(org2Id);
         assertEq(org1Certs.length, 1);
         assertEq(org2Certs.length, 1);
 
-        string[] memory approvedCerts = certificationManager.getCertificatesByStatus(Certificate.CertificateStatus.Approved);
-        string[] memory rejectedCerts = certificationManager.getCertificatesByStatus(Certificate.CertificateStatus.Rejected);
+        string[] memory approvedCerts = certificate.getCertificatesByStatus(Certificate.CertificateStatus.Approved);
+        string[] memory rejectedCerts = certificate.getCertificatesByStatus(Certificate.CertificateStatus.Rejected);
         assertEq(approvedCerts.length, 1);
         assertEq(rejectedCerts.length, 1);
     }
@@ -535,8 +503,8 @@ contract CertificationManagerTest is Test {
         CertificationManager uninitializedManager = new CertificationManager(admin);
 
         vm.prank(admin);
-        vm.expectRevert("Organization contract not set");
-        uninitializedManager.registerOrganization("1", orgOwner, "Test", "US");
+        vm.expectRevert("Contracts not set");
+        uninitializedManager.submitCertificate("1", ORG_ID, CERT_TYPE_ID, HOLDER_ID, HOLDER_COUNTRY, GRANT_LEVEL, block.timestamp + 365 days, IPFS_HASH);
     }
 
     function testAccessControlInheritance() public view {

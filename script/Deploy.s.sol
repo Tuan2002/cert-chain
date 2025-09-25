@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "forge-std/Script.sol";
-import "forge-std/console.sol";
-import "../src/contracts/Organization.sol";
-import "../src/contracts/CertificateType.sol";
-import "../src/contracts/Certificate.sol";
-import "../src/OrganizationManager.sol";
-import "../src/CertificationTypeManager.sol";
-import "../src/CertificationManager.sol";
+import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+import {Organization} from "../src/contracts/Organization.sol";
+import {CertificateType} from "../src/contracts/CertificateType.sol";
+import {Certificate} from "../src/contracts/Certificate.sol";
+import {OrganizationManager} from "../src/OrganizationManager.sol";
+import {CertificationTypeManager} from "../src/CertificationTypeManager.sol";
+import {CertificationManager} from "../src/CertificationManager.sol";
 
 contract DeployScript is Script {
     function setUp() public {}
@@ -56,10 +56,8 @@ contract DeployScript is Script {
         // Initialize the certification manager with contract addresses
         certificationManager.initializeContracts(
             address(organizationContract),
-            address(certificateTypeContract),
             address(certificateContract),
-            address(organizationManager),
-            address(certificationTypeManager)
+            address(organizationManager)
         );
 
         vm.stopBroadcast();
