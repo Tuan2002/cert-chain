@@ -104,12 +104,12 @@ jobs:
               source deployment-addresses.txt
               
               # Add each contract to the table if it exists
-              [ -n "$ORGANIZATION_CONTRACT" ] && echo "| **Organization** | \`$ORGANIZATION_CONTRACT\` | [View](https://sepolia.etherscan.io/address/$ORGANIZATION_CONTRACT) |" >> $GITHUB_STEP_SUMMARY
-              [ -n "$CERTIFICATE_TYPE_CONTRACT" ] && echo "| **CertificateType** | \`$CERTIFICATE_TYPE_CONTRACT\` | [View](https://sepolia.etherscan.io/address/$CERTIFICATE_TYPE_CONTRACT) |" >> $GITHUB_STEP_SUMMARY
-              [ -n "$CERTIFICATE_CONTRACT" ] && echo "| **Certificate** | \`$CERTIFICATE_CONTRACT\` | [View](https://sepolia.etherscan.io/address/$CERTIFICATE_CONTRACT) |" >> $GITHUB_STEP_SUMMARY
-              [ -n "$ORGANIZATION_MANAGER" ] && echo "| **OrganizationManager** | \`$ORGANIZATION_MANAGER\` | [View](https://sepolia.etherscan.io/address/$ORGANIZATION_MANAGER) |" >> $GITHUB_STEP_SUMMARY
-              [ -n "$CERTIFICATION_TYPE_MANAGER" ] && echo "| **CertificationTypeManager** | \`$CERTIFICATION_TYPE_MANAGER\` | [View](https://sepolia.etherscan.io/address/$CERTIFICATION_TYPE_MANAGER) |" >> $GITHUB_STEP_SUMMARY
-              [ -n "$CERTIFICATION_MANAGER" ] && echo "| **CertificationManager** | \`$CERTIFICATION_MANAGER\` | [View](https://sepolia.etherscan.io/address/$CERTIFICATION_MANAGER) |" >> $GITHUB_STEP_SUMMARY
+              [ -n "$ORGANIZATION_CONTRACT" ] && echo "| **Organization** | \`$ORGANIZATION_CONTRACT\` | [View](${{vars.EXPLORE_URL}}/address/$ORGANIZATION_CONTRACT) |" >> $GITHUB_STEP_SUMMARY
+              [ -n "$CERTIFICATE_TYPE_CONTRACT" ] && echo "| **CertificateType** | \`$CERTIFICATE_TYPE_CONTRACT\` | [View](${{vars.EXPLORE_URL}}/address/$CERTIFICATE_TYPE_CONTRACT) |" >> $GITHUB_STEP_SUMMARY
+              [ -n "$CERTIFICATE_CONTRACT" ] && echo "| **Certificate** | \`$CERTIFICATE_CONTRACT\` | [View](${{vars.EXPLORE_URL}}/address/$CERTIFICATE_CONTRACT) |" >> $GITHUB_STEP_SUMMARY
+              [ -n "$ORGANIZATION_MANAGER" ] && echo "| **OrganizationManager** | \`$ORGANIZATION_MANAGER\` | [View](${{vars.EXPLORE_URL}}/address/$ORGANIZATION_MANAGER) |" >> $GITHUB_STEP_SUMMARY
+              [ -n "$CERTIFICATION_TYPE_MANAGER" ] && echo "| **CertificationTypeManager** | \`$CERTIFICATION_TYPE_MANAGER\` | [View](${{vars.EXPLORE_URL}}/address/$CERTIFICATION_TYPE_MANAGER) |" >> $GITHUB_STEP_SUMMARY
+              [ -n "$CERTIFICATION_MANAGER" ] && echo "| **CertificationManager** | \`$CERTIFICATION_MANAGER\` | [View](${{vars.EXPLORE_URL}}/address/$CERTIFICATION_MANAGER) |" >> $GITHUB_STEP_SUMMARY
             else
               echo "❌ No contract addresses found (deployment-addresses.txt missing)" >> $GITHUB_STEP_SUMMARY
             fi

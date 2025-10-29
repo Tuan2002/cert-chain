@@ -52,13 +52,6 @@ contract CertificationManager is AccessControl {
         organizationManager = _organizationManager;
     }
 
-    /**
-     * @dev Pause/unpause the system (only admin)
-     */
-    function setPaused(bool _paused) external onlyRole(ADMIN_ROLE) {
-        paused = _paused;
-    }
-
     // Certificate Management Functions (with enhanced access control)
     function submitCertificate(
         string memory _id,
