@@ -14,9 +14,9 @@ contract CertificateTypeTest is Test {
     string public constant TYPE_ID_2 = "TYPE002";
 
     // Events to test
-    event CertificateTypeCreated(string indexed id, string name, string code);
-    event CertificateTypeUpdated(string indexed id, string name, string code, string description);
-    event CertificateTypeDeactivated(string indexed id);
+    event CertificateTypeCreated(string id, string name, string code);
+    event CertificateTypeUpdated(string id, string name, string code, string description);
+    event CertificateTypeDeactivated(string id);
 
     function setUp() public {
         admin = address(this);

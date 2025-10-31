@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-
 /**
  * @title Certificate
  * @dev Contract to represent and manage digital certificates
@@ -19,7 +18,6 @@ contract Certificate is AccessControl {
         Rejected,
         Revoked
     }
-
     struct CertificateData {
         string id;
         string organizationId;
@@ -38,16 +36,16 @@ contract Certificate is AccessControl {
 
     // Events
     event CertificateSubmitted(
-        string indexed id,
-        string indexed organizationId,
-        string indexed certificateTypeId,
+        string id,
+        string organizationId,
+        string certificateTypeId,
         address submittedBy,
         string holderIdCard
     );
-    event CertificateApproved(string indexed id, address indexed approvedBy);
-    event CertificateRejected(string indexed id, address indexed rejectedBy, string reason);
-    event CertificateRevoked(string indexed id, address indexed revokedBy, string reason);
-    event CertificateRemoved(string indexed id, address indexed removedBy);
+    event CertificateApproved(string id, address approvedBy);
+    event CertificateRejected(string id, address rejectedBy, string reason);
+    event CertificateRevoked(string id, address revokedBy, string reason);
+    event CertificateRemoved(string id, address removedBy);
 
     // Storage
     mapping(string => CertificateData) private certificates;

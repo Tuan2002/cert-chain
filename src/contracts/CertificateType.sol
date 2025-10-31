@@ -22,9 +22,9 @@ contract CertificateType is AccessControl {
     }
 
     // Events
-    event CertificateTypeCreated(string indexed id, string name, string code);
-    event CertificateTypeUpdated(string indexed id, string name, string code, string description);
-    event CertificateTypeDeactivated(string indexed id);
+    event CertificateTypeCreated(string id, string name, string code);
+    event CertificateTypeUpdated(string id, string name, string code, string description);
+    event CertificateTypeDeactivated(string id);
 
     // Storage
     mapping(string => CertificateTypeData) private certificateTypes;

@@ -25,12 +25,12 @@ contract Organization is AccessControl {
     }
 
     // Events
-    event OrganizationCreated(string indexed id, address indexed owner, string name, string countryCode);
-    event OrganizationUpdated(string indexed id, string name, string countryCode);
-    event OrganizationDeactivated(string indexed id);
-    event ManagerAdded(string indexed orgId, address indexed manager);
-    event ManagerRemoved(string indexed orgId, address indexed manager);
-    event OwnershipTransferred(string indexed orgId, address indexed previousOwner, address indexed newOwner);
+    event OrganizationCreated(string id, address owner, string name, string countryCode);
+    event OrganizationUpdated(string id, string name, string countryCode);
+    event OrganizationDeactivated(string id);
+    event ManagerAdded(string orgId, address manager);
+    event ManagerRemoved(string orgId, address manager);
+    event OwnershipTransferred(string orgId, address previousOwner, address newOwner);
 
     // Storage
     mapping(string => OrganizationData) private organizations;

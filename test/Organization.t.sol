@@ -18,12 +18,12 @@ contract OrganizationTest is Test {
     string public constant ORG_ID_2 = "ORG002";
 
     // Events to test
-    event OrganizationCreated(string indexed id, address indexed owner, string name, string countryCode);
-    event OrganizationUpdated(string indexed id, string name, string countryCode);
-    event OrganizationDeactivated(string indexed id);
-    event ManagerAdded(string indexed orgId, address indexed manager);
-    event ManagerRemoved(string indexed orgId, address indexed manager);
-    event OwnershipTransferred(string indexed orgId, address indexed previousOwner, address indexed newOwner);
+    event OrganizationCreated(string id, address owner, string name, string countryCode);
+    event OrganizationUpdated(string id, string name, string countryCode);
+    event OrganizationDeactivated(string id);
+    event ManagerAdded(string orgId, address manager);
+    event ManagerRemoved(string orgId, address manager);
+    event OwnershipTransferred(string orgId, address previousOwner, address newOwner);
 
     function setUp() public {
         admin = address(this);
@@ -41,7 +41,7 @@ contract OrganizationTest is Test {
         string memory name = "Test University";
         string memory countryCode = "US";
 
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(false, false, false, true);
         emit OrganizationCreated(ORG_ID, owner1, name, countryCode);
 
         organization.createOrganization(ORG_ID, owner1, name, countryCode);
@@ -97,7 +97,7 @@ contract OrganizationTest is Test {
         string memory newName = "Updated University";
         string memory newCountryCode = "CA";
 
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit(false, false, false, true);
         emit OrganizationUpdated(ORG_ID, newName, newCountryCode);
 
         vm.prank(owner1);
@@ -152,7 +152,7 @@ contract OrganizationTest is Test {
     function testAddManager() public {
         organization.createOrganization(ORG_ID, owner1, "Test University", "US");
 
-        vm.expectEmit(true, true, false, false);
+        vm.expectEmit(false, false, false, true);
         emit ManagerAdded(ORG_ID, manager1);
 
         vm.prank(owner1);
@@ -200,7 +200,7 @@ contract OrganizationTest is Test {
         vm.prank(owner1);
         organization.addManager(ORG_ID, manager2);
 
-        vm.expectEmit(true, true, false, false);
+        vm.expectEmit(false, false, false, true);
         emit ManagerRemoved(ORG_ID, manager1);
 
         vm.prank(owner1);
@@ -236,7 +236,7 @@ contract OrganizationTest is Test {
     function testTransferOwnership() public {
         organization.createOrganization(ORG_ID, owner1, "Test University", "US");
 
-        vm.expectEmit(true, true, true, false);
+        vm.expectEmit(false, false, false, true);
         emit OwnershipTransferred(ORG_ID, owner1, owner2);
 
         // Admin calls transferOwnership, not the owner

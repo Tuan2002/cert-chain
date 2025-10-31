@@ -27,16 +27,16 @@ contract CertificateTest is Test {
 
     // Events to test
     event CertificateSubmitted(
-        string indexed id,
-        string indexed organizationId,
-        string indexed certificateTypeId,
+        string id,
+        string organizationId,
+        string certificateTypeId,
         address submittedBy,
         string holderIdCard
     );
-    event CertificateApproved(string indexed id, address indexed approvedBy);
-    event CertificateRejected(string indexed id, address indexed rejectedBy, string reason);
-    event CertificateRevoked(string indexed id, address indexed revokedBy, string reason);
-    event CertificateRemoved(string indexed id, address indexed removedBy);
+    event CertificateApproved(string id, address approvedBy);
+    event CertificateRejected(string id, address rejectedBy, string reason);
+    event CertificateRevoked(string id, address revokedBy, string reason);
+    event CertificateRemoved(string id, address removedBy);
 
     function setUp() public {
         // Use vm.addr to get addresses from private keys for proper signature testing
